@@ -1,0 +1,10 @@
+{
+  "name": "url",
+  "version": "0.0.1",
+  "description": "A url memorabliser",
+  "author": "Harry Maclean <harryjmcalean@gmail.com>",
+  "dependencies": {
+    "redis": "0.10.3"
+  },
+  "engine": "node >= 0.8.16"
+}
