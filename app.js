@@ -4,6 +4,8 @@ var fs = require('fs');
 var redis = require('redis');
 var client = redis.createClient();
 
+var ROOT = "http://localhost:8888/";
+
 // Set up wordlist
 var words;
 fs.readFile('words.txt', function(err, data) {
@@ -17,13 +19,29 @@ var handle = function(req, res) {
     handleNew(req, res);
     return;
   }
+  if (path === "/") {
+    handlePage(req, res, "index.html");
+    return;
+  }
+  if (path === "/favicon.ico") {
+    res.end();
+    return;
+  }
   handleRedirect(req, res);
+};
+
+var handlePage = function(req, res, filename) {
+  console.log("PAGE "+filename);
+  fs.readFile(filename, function(err, data) {
+    res.end(data);
+  });
 };
 
 var handleRedirect = function(req, res) {
   var path = url.parse(req.url).pathname;
   var phrase = path.slice(1, path.length);
   client.get(phrase, function(err, redirect) {
+    console.log("REDIRECT "+phrase+" --> "+redirect);
     res.writeHead(302, {"Location": redirect});
     res.end();
   });
@@ -41,18 +59,34 @@ var handleNew = function(req, res) {
     return;
   }
   orig_url = orig_url[1];
-  (function storeURL() {
-    var phrase = createPhrase();
-    client.exists(phrase, function(err,exists) {
-      if (exists === 0) {
-        client.set(phrase, orig_url);
-        res.end(phrase);
-      }
-      else {
-        storeURL();
-      }
-    });
-  })();
+  url_obj = url.parse(orig_url);
+  if (url_obj.protocol === undefined) {
+    orig_url = "http://"+url_obj.href;
+  }
+  // Check if URL is already stored
+  client.exists(orig_url, function(err, exists) {
+    if (exists === 1) {
+      console.log("DUPE: "+orig_url);
+      client.get(orig_url, function(err, phrase) {
+        res.end(ROOT+phrase);
+      });
+      return;
+    }
+    console.log("NEW: "+orig_url);
+    (function storeURL() {
+      var phrase = createPhrase();
+      client.exists(phrase, function(err,exists) {
+        if (exists === 0) {
+          client.set(phrase, orig_url);
+          client.set(orig_url, phrase);
+          res.end(ROOT+phrase);
+        }
+        else {
+          storeURL();
+        }
+      });
+    })();
+  });
 };
 
 var createPhrase = function() {
