@@ -48,7 +48,7 @@ var handleRedirect = function(req, res) {
 };
 
 var handleNew = function(req, res) {
-  var qry = url.parse(req.url).query;
+  var qry = decodeURIComponent(url.parse(req.url).query);
   if (qry === undefined) {
     res.end();
     return;
